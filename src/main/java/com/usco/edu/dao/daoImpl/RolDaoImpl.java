@@ -24,7 +24,7 @@ import com.usco.edu.util.AuditoriaJdbcTemplate;
 public class RolDaoImpl implements IRolDao {
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 	
 	@Autowired

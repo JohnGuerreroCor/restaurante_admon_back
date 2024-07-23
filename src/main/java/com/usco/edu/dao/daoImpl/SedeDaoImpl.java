@@ -16,7 +16,7 @@ public class SedeDaoImpl implements ISedeDao{
 	
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

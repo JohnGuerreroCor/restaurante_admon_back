@@ -12,7 +12,7 @@ public class AdministrativoDaoImpl implements IAdministrativoDao{
 
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

@@ -18,7 +18,7 @@ public class DepartamentoDaoImpl implements IDepartamentoDao{
 	
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

@@ -21,7 +21,7 @@ import com.usco.edu.resultSetExtractor.SubSedeSetExtractor;
 public class UbicacionDaoImpl implements IUbicacionDao {
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

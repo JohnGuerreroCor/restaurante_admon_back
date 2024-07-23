@@ -15,7 +15,7 @@ import com.usco.edu.resultSetExtractor.AdministrativoSetExtractor;
 public class AdministrativoCarnetDaoImpl implements IAdministrativoCarnetDao {
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 	
 

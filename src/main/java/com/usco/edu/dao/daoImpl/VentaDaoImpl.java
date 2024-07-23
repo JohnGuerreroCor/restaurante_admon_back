@@ -29,7 +29,7 @@ public class VentaDaoImpl implements IVentaDao {
     private AuditoriaJdbcTemplate jdbcComponent;
 
     @Autowired
-    @Qualifier("JDBCTemplatePlanesConsulta")
+    @Qualifier("JDBCTemplateConsulta")
     public JdbcTemplate jdbcTemplate;
 
     @Override

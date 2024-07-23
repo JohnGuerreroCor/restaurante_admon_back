@@ -22,14 +22,19 @@ public class InfoAdicionalToken implements TokenEnhancer{
 	@Override
 	public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
 		
-		Usuario usuario = usuarioService.findByUsername(authentication.getName());
-		Map<String, Object> info = new HashMap<>();
-		info.put("info_adicional", "Hola que tal!: ".concat(authentication.getName()));
-		info.put("per_codigo", usuario.getPersona().getCodigo());
-		info.put("ucod", usuario.getUaa().getCodigo());
-		info.put("uaa", usuario.getUaa().getNombreCorto());
-		info.put("nombre", usuario.getPersona().getNombre());
-		info.put("apellido",usuario.getPersona().getApellido());
+		 // OBTENER INFORMACIÓN ADICIONAL DEL USUARIO Y AGREGARLA AL TOKEN
+        Usuario usuario = usuarioService.buscarUsuario(authentication.getName());
+        Map<String, Object> info = new HashMap<>();
+        info.put("Informacion Token Inicio Sesion", "Campos Necesarios ".concat(authentication.getName()));
+        info.put("personaCodigo", usuario.getPersona().getCodigo());
+        info.put("uaaCodigo", usuario.getUaa().getCodigo());
+        info.put("uaaNombre", usuario.getUaa().getNombreCorto());
+        info.put("personaNombre", usuario.getPersona().getNombre());
+        info.put("personaApellido", usuario.getPersona().getApellido());
+        info.put("horaInicioSesion", usuario.getHoraInicioSesion());
+        
+		//LAS VARIABLES ANTERIORES SE CARGAN EN EL TOKEN DE INICIO DE SESIÓN PARA IMPLEMENTAR DENTRO DEL APLICATIVO
+		//AGREGAR LAS NECESARIAS SEGÚN LA FUNCIONALIDAD A IMPLEMENTAR, TENER EN CUENTA MODIFICAR LA ENTIDAD Y ROWMAPPER PARA ELLO
 		
 		
 		

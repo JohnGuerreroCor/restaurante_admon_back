@@ -27,7 +27,7 @@ public class TerceroDaoImpl implements ITerceroDao {
 	private AuditoriaJdbcTemplate jdbcComponent;
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 	
 

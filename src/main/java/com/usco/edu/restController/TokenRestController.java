@@ -38,7 +38,7 @@ public class TokenRestController {
 	@GetMapping("/getToken/{username}")
 	public ResponseEntity<?>  getToken(@PathVariable("username") String username ,HttpServletRequest request) {
 		Map<String, Object> response = new HashMap<>();
-		Usuario usuario = usuarioservice.findByUsername(username);
+		Usuario usuario = usuarioservice.buscarUsuario(username);
 		String ip = request.getRemoteAddr().toString();
 		String respuesta = generartoken(usuario,ip);
 		
@@ -50,7 +50,7 @@ public class TokenRestController {
 	@GetMapping("/validarToken/{username}/{codigo}")
 	public ResponseEntity<?> validarToken(@PathVariable("username") String username ,@PathVariable("codigo") String codigo ,HttpServletRequest request) {
 		Map<String, Object> response = new HashMap<>();
-		Usuario usuario = usuarioservice.findByUsername(username);
+		Usuario usuario = usuarioservice.buscarUsuario(username);
 		String ip = request.getRemoteAddr().toString();
 		boolean respuesta = validarToken(usuario, ip, codigo);
 		System.out.println("Entramos validar token");

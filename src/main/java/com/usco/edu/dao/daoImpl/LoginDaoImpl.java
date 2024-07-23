@@ -16,7 +16,7 @@ import com.usco.edu.dao.ILoginDao;
 public class LoginDaoImpl implements ILoginDao{
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesLogin")
+	@Qualifier("JDBCTemplateLogin")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

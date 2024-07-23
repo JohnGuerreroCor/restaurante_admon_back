@@ -20,7 +20,7 @@ public class EstamentoDaoImpl implements IEstamentoDao {
 	
 
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
 	@Override

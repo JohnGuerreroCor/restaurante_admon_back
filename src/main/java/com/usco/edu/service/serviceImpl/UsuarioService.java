@@ -57,11 +57,11 @@ public class UsuarioService implements UserDetailsService,IUsuarioService{
 				.getRequest();
 		String segundaClave = request.getParameter("clave2");
 		
-		if (!usuariodao.validarUser(username)){
+		if (!usuariodao.validarUsuario(username)){
 			logger.error("Error, no exite el usuario '"+username+"' en el sistema!!!");
 			throw new DisabledException("No exite el usuario en el sistema.");
 		}
-		Usuario usuario = usuariodao.findByUsername(username);
+		Usuario usuario = usuariodao.buscarUsuario(username);
 
 		//con este List sacamos todos los roles del usuario que se esta autenticando		
 		Role rol = new Role(1,"ROLE_"+usuario.getRole());
@@ -100,8 +100,8 @@ public class UsuarioService implements UserDetailsService,IUsuarioService{
 
 	@Override
 	@Transactional(readOnly=true)
-	public Usuario findByUsername(String username) {
-		return usuariodao.findByUsername(username);
+	public Usuario buscarUsuario(String username) {
+		return usuariodao.buscarUsuario(username);
 	}
 	
 	

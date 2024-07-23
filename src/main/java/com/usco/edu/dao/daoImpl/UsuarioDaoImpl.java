@@ -13,13 +13,15 @@ import com.usco.edu.rowMapper.UsuarioRowMapper;
 public class UsuarioDaoImpl implements IUsuarioDao{
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesLogin")
+	@Qualifier("JDBCTemplateLogin")
 	public JdbcTemplate jdbcTemplate;
+	
+	//REEMPLAZAR LA VISTA DE USURIO POR LA QUE IMPLEMENTA SU APLICATIVO, TENER EN CUENTA LAS VARIBALES DE LA CONSULTA IMPLEMENTADA EN EL ROWMAPPER
  
 	@Override
-	public Usuario findByUsername(String username) {
+	public Usuario buscarUsuario(String username) {
 		
-		String sql = "select * from usuario_sibusco_restaurante_login usrl "
+		String sql = "select *, GETDATE() as horaInicioSesion from usuario_sibusco_restaurante_login usrl "
 				+ "inner join uaa u on u.uaa_codigo = usrl.usg_uaa "
 				+ "inner join sede s on s.sed_codigo = u.sed_codigo "
 				+ "inner join persona p on p.per_codigo = usrl.up "
@@ -30,9 +32,10 @@ public class UsuarioDaoImpl implements IUsuarioDao{
 		return jdbcTemplate.queryForObject(sql, new Object[] { username }, new UsuarioRowMapper());
 	}
 
+	//REEMPLAZAR LA VISTA DE USURIO POR LA QUE IMPLEMENTA SU APLICATIVO, TENER EN CUENTA LAS VARIBALES DE LA CONSULTA IMPLEMENTADA EN EL ROWMAPPER
 
 	@Override
-	public boolean validarUser(String username) {
+	public boolean validarUsuario(String username) {
 		int result = 0;
 		String sql = "select COUNT(usrl.us) from usuario_sibusco_restaurante_login usrl "
 				+ "inner join uaa u on u.uaa_codigo = usrl.usg_uaa "

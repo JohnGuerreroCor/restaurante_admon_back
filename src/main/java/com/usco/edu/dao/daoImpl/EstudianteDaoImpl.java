@@ -15,7 +15,7 @@ import com.usco.edu.resultSetExtractor.EstudianteSetExtractor;
 public class EstudianteDaoImpl implements IEstudianteDao{
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 	
 

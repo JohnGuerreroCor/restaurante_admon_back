@@ -15,7 +15,7 @@ import com.usco.edu.resultSetExtractor.TipoDocumentoSetExtractor;
 public class TipoDocumentoDaoImpl implements ITipoDocumentoDao {
 	
 	@Autowired
-	@Qualifier("JDBCTemplatePlanesConsulta")
+	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 	
 
