@@ -1,7 +1,10 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -9,12 +12,7 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 import com.usco.edu.dao.IHorarioServicioDao;
 import com.usco.edu.entities.HorarioServicio;
@@ -26,7 +24,7 @@ public class HorarioServicioDaoImpl implements IHorarioServicioDao {
 
 	@Autowired
 	private AuditoriaJdbcTemplate jdbcComponent;
-
+	
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
@@ -50,160 +48,88 @@ public class HorarioServicioDaoImpl implements IHorarioServicioDao {
 
 	@Override
 	public int crearHorarioServicio(String userdb, HorarioServicio horarioServicio) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "INSERT INTO sibusco.restaurante_horario_servicio "
+	            + "(rhs_hora_inicio_venta, rhs_hora_fin_venta, rhs_hora_inicio_atencion, rhs_hora_fin_atencion, rts_codigo, rhs_uaa_codigo, rhs_estado, rhs_observacion_estado, rhs_fecha_estado, rhs_cantidad_comidas, rhs_cantidad_tiquetes) "
+	            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		String sql = "INSERT INTO sibusco.restaurante_horario_servicio "
-				+ "(rhs_hora_inicio_venta, rhs_hora_fin_venta, rhs_hora_inicio_atencion, rhs_hora_fin_atencion, rts_codigo, rhs_uaa_codigo, rhs_estado, rhs_observacion_estado, rhs_fecha_estado, rhs_cantidad_comidas, rhs_cantidad_tiquetes) "
-				+ "VALUES(:horaIncioVenta, :horaFinVenta, :horaInicioAtencion, :horaFinAtencion, :tipoServicio, :uaa, :estado, :observacionEstado, :fechaEstado, :cantidadComidas, :cantidadVentas, :cantidadTiquetes);";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setTime(1, horarioServicio.getHoraIncioVenta());
+	        pstmt.setTime(2, horarioServicio.getHoraFinVenta());
+	        pstmt.setTime(3, horarioServicio.getHoraInicioAtencion());
+	        pstmt.setTime(4, horarioServicio.getHoraFinAtencion());
+	        pstmt.setInt(5, horarioServicio.getTipoServicio().getCodigo());
+	        pstmt.setLong(6, horarioServicio.getUaa().getCodigo());
+	        pstmt.setInt(7, horarioServicio.getEstado());
+	        pstmt.setString(8, horarioServicio.getObservacionEstado());
+	        pstmt.setDate(9, horarioServicio.getFechaEstado());
+	        pstmt.setInt(10, horarioServicio.getCantidadComidas());
+	        pstmt.setInt(11, horarioServicio.getCantidadTiquetes());
 
-			parameter.addValue("horaIncioVenta", horarioServicio.getHoraIncioVenta());
-			parameter.addValue("horaFinVenta", horarioServicio.getHoraFinVenta());
-			parameter.addValue("horaInicioAtencion", horarioServicio.getHoraInicioAtencion());
-			parameter.addValue("horaFinAtencion", horarioServicio.getHoraFinAtencion());
-			parameter.addValue("tipoServicio", horarioServicio.getTipoServicio().getCodigo());
-			parameter.addValue("uaa", horarioServicio.getUaa());
-			parameter.addValue("estado", horarioServicio.getEstado());
-			parameter.addValue("observacionEstado", horarioServicio.getObservacionEstado());
-			parameter.addValue("fechaEstado", horarioServicio.getFechaEstado());
-			parameter.addValue("cantidadComidas", horarioServicio.getCantidadComidas());
-			parameter.addValue("cantidadVentas", horarioServicio.getCantidadVentas());
-			parameter.addValue("cantidadTiquetes", horarioServicio.getCantidadTiquetes());
+	        int rowsAffected = pstmt.executeUpdate();
 
-			jdbc.update(sql, parameter, keyHolder);
-			return keyHolder.getKey().intValue();
+	        try (ResultSet rs = pstmt.getGeneratedKeys()) {
+	            if (rs.next()) {
+	                int generatedId = rs.getInt(1);
+	                connection.commit(); 
+	                return generatedId; 
+	            } else {
+	                connection.rollback(); 
+	                return 0;
+	            }
+	        }
 
-		} catch (Exception e) {
-
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0; 
+	    }
 	}
 
 	@Override
 	public int actualizarHorarioServicio(String userdb, HorarioServicio horarioServicio) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
-		
-		String sqlVenta = "IF NOT EXISTS ( " +
-                "    SELECT 1 " +
-                "    FROM sibusco.restaurante_horario_servicio existing " +
-                "    WHERE " +
-                "        :horaFinVenta >= existing.rhs_hora_inicio_venta " +
-                "        AND :horaIncioVenta <= existing.rhs_hora_fin_venta " +
-                "        AND :uaa = existing.rhs_uaa_codigo " +
-                "        AND existing.rhs_codigo <> :codigo " +
-                ") " +
-                "BEGIN " +
-                "    UPDATE sibusco.restaurante_horario_servicio " +
-                "    SET " +
-                "        rhs_hora_inicio_venta = :horaIncioVenta, " +
-                "        rhs_hora_fin_venta = :horaFinVenta, " +
-                "        rhs_hora_inicio_atencion = :horaInicioAtencion, " +
-                "        rhs_hora_fin_atencion = :horaFinAtencion, " +
-                "        rts_codigo = :tipoServicio, " +
-                "        rhs_uaa_codigo = :uaa, " +
-                "        rhs_estado = :estado, " +
-                "        rhs_observacion_estado = :observacionEstado, " +
-                "        rhs_fecha_estado = :fechaEstado, " +
-                "        rhs_cantidad_comidas = :cantidadComidas, " +
-                "        rhs_cantidad_ventas_permitidas=:cantidadVentas, " + 
-                "        rhs_cantidad_tiquetes = :cantidadTiquetes " +
-                "    WHERE " +
-                "        rhs_codigo = :codigo; " +
-                "END;";
-		
-		
-		String sqlAtencion = " IF NOT EXISTS ("
-			    + "SELECT 1 "
-			    + "FROM sibusco.restaurante_horario_servicio existing "
-			    + "WHERE "
-			    + "    :horaFinAtencion >= existing.rhs_hora_inicio_atencion "
-			    + "    AND :horaInicioAtencion <= existing.rhs_hora_fin_atencion "
-			    + "    AND :uaa = existing.rhs_uaa_codigo "
-			    + "    AND existing.rhs_codigo <> :codigo "
-			    + ")"
-			    + "BEGIN "
-			    + "    UPDATE sibusco.restaurante_horario_servicio "
-			    + "    SET "
-			    + "        rhs_hora_inicio_venta = :horaIncioVenta, "
-			    + "        rhs_hora_fin_venta = :horaFinVenta, "
-			    + "        rhs_hora_inicio_atencion = :horaInicioAtencion, "
-			    + "        rhs_hora_fin_atencion = :horaFinAtencion, "
-			    + "        rts_codigo = :tipoServicio, "
-			    + "        rhs_uaa_codigo = :uaa, "
-			    + "        rhs_estado = :estado, "
-			    + "        rhs_observacion_estado = :observacionEstado, "
-			    + "        rhs_fecha_estado = :fechaEstado, "
-			    + "        rhs_cantidad_comidas = :cantidadComidas, "
-			    + "        rhs_cantidad_ventas_permitidas=:cantidadVentas, "
-			    + "        rhs_cantidad_tiquetes = :cantidadTiquetes "
-			    + "    WHERE "
-			    + "        rhs_codigo = :codigo; "
-			    + "END; ";
-		
-		String sql = "UPDATE sibusco.restaurante_horario_servicio "
-				+ "SET rhs_hora_inicio_venta=:horaIncioVenta, rhs_hora_fin_venta=:horaFinVenta, rhs_hora_inicio_atencion=:horaInicioAtencion, rhs_hora_fin_atencion=:horaFinAtencion, rhs_uaa_codigo=:uaa, rhs_estado=:estado, rhs_observacion_estado=:observacionEstado, rhs_fecha_estado=:fechaEstado, rhs_cantidad_comidas=:cantidadComidas, rhs_cantidad_ventas_permitidas=:cantidadVentas, rhs_cantidad_tiquetes=:cantidadTiquetes "
-				+ "WHERE rhs_codigo=:codigo";
-				
+	    String sql = "UPDATE sibusco.restaurante_horario_servicio "
+	            + "SET rhs_hora_inicio_venta=?, "
+	            + "rhs_hora_fin_venta=?, "
+	            + "rhs_hora_inicio_atencion=?, "
+	            + "rhs_hora_fin_atencion=?, "
+	            + "rhs_uaa_codigo=?, "
+	            + "rhs_estado=?, "
+	            + "rhs_observacion_estado=?, "
+	            + "rhs_fecha_estado=?, "
+	            + "rhs_cantidad_comidas=?, "
+	            + "rhs_cantidad_ventas_permitidas=?, "
+	            + "rhs_cantidad_tiquetes=? "
+	            + "WHERE rhs_codigo=?";
 
-		//String sql = sqlVenta + sqlAtencion;
-		
-		try {
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        connection.setAutoCommit(false);
 
-			parameter.addValue("codigo", horarioServicio.getCodigo());
-			parameter.addValue("horaIncioVenta", horarioServicio.getHoraIncioVenta());
-			parameter.addValue("horaFinVenta", horarioServicio.getHoraFinVenta());
-			parameter.addValue("horaInicioAtencion", horarioServicio.getHoraInicioAtencion());
-			parameter.addValue("horaFinAtencion", horarioServicio.getHoraFinAtencion());
-			//parameter.addValue("tipoServicio", horarioServicio.getTipoServicio().getCodigo());
-			parameter.addValue("uaa", horarioServicio.getUaa().getCodigo());
-			parameter.addValue("estado", horarioServicio.getEstado());
-			parameter.addValue("observacionEstado", horarioServicio.getObservacionEstado());
-			parameter.addValue("fechaEstado", horarioServicio.getFechaEstado());
-			parameter.addValue("cantidadComidas", horarioServicio.getCantidadComidas());
-			parameter.addValue("cantidadVentas", horarioServicio.getCantidadVentas());
-			parameter.addValue("cantidadTiquetes", horarioServicio.getCantidadTiquetes());
-			
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
+	        pstmt.setTime(1, horarioServicio.getHoraIncioVenta());
+	        pstmt.setTime(2, horarioServicio.getHoraFinVenta());
+	        pstmt.setTime(3, horarioServicio.getHoraInicioAtencion());
+	        pstmt.setTime(4, horarioServicio.getHoraFinAtencion());
+	        pstmt.setLong(5, horarioServicio.getUaa().getCodigo());
+	        pstmt.setInt(6, horarioServicio.getEstado());
+	        pstmt.setString(7, horarioServicio.getObservacionEstado());
+	        pstmt.setDate(8, horarioServicio.getFechaEstado());
+	        pstmt.setInt(9, horarioServicio.getCantidadComidas());
+	        pstmt.setInt(10, horarioServicio.getCantidadVentas());
+	        pstmt.setInt(11, horarioServicio.getCantidadTiquetes());
+	        pstmt.setInt(12, horarioServicio.getCodigo());
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
+	        int rowsAffected = pstmt.executeUpdate();
+	        connection.commit();
+	        return rowsAffected;
 
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0;
+	    }
 	}
 
 }

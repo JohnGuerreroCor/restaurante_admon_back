@@ -1,23 +1,17 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
-
-import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
-import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 import com.usco.edu.dao.IDiaBeneficioDao;
 import com.usco.edu.entities.DiaBeneficio;
@@ -33,7 +27,8 @@ public class DiaBeneficioDaoImpl implements IDiaBeneficioDao {
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
-
+	
+	
 	@Override
 	public List<DiaBeneficio> obtenerDiaBeneficio(String userdb, int idGrupoGabu) {
 		String sql = "SELECT * FROM sibusco.restaurante_dias_beneficio rdb "
@@ -59,118 +54,98 @@ public class DiaBeneficioDaoImpl implements IDiaBeneficioDao {
 
 	@Override
 	public int actualizarDiaBeneficio(String userdb, DiaBeneficio diasBeneficio) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "UPDATE sibusco.restaurante_dias_beneficio "
+	            + "SET rdb_estado=? "
+	            + "WHERE rgg_codigo=? "
+	            + "AND dia_codigo=? "
+	            + "AND rts_codigo=?";
 
-		String sql = "UPDATE sibusco.restaurante_dias_beneficio " + "SET rdb_estado=:estado "
-				+ "WHERE rgg_codigo=:codigoGrupoGabu " + "AND dia_codigo=:diaCodigo " + "AND rts_codigo=:tipoServicio ";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setInt(1, diasBeneficio.getEstado());
+	        pstmt.setInt(2, diasBeneficio.getCodigoGrupoGabu());
+	        pstmt.setInt(3, diasBeneficio.getDia().getCodigo());
+	        pstmt.setInt(4, diasBeneficio.getTipoServicio().getCodigo());
 
-			parameter.addValue("estado", diasBeneficio.getEstado());
-			parameter.addValue("codigoGrupoGabu", diasBeneficio.getCodigoGrupoGabu());
-			parameter.addValue("diaCodigo", diasBeneficio.getDia().getCodigo());
-			parameter.addValue("tipoServicio", diasBeneficio.getTipoServicio().getCodigo());
+	        int rowsAffected = pstmt.executeUpdate();
+	        connection.commit();
+	        return rowsAffected;
 
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
-
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0;
+	    }
 	}
+
 
 	@Override
 	public int crearDiaBeneficio(String userdb, DiaBeneficio diasBeneficio) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "INSERT INTO sibusco.restaurante_dias_beneficio "
+	            + "(rgg_codigo, dia_codigo, rdb_estado, rts_codigo) "
+	            + "VALUES (?, ?, ?, ?)";
 
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		String sql = "INSERT INTO sibusco.restaurante_dias_beneficio "
-				+ "(rgg_codigo, dia_codigo, rdb_estado, rts_codigo) "
-				+ "VALUES(:grupoGabu, :dia, :estado, :tipoServicio);";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setInt(1, diasBeneficio.getCodigoGrupoGabu());
+	        pstmt.setInt(2, diasBeneficio.getDia().getCodigo());
+	        pstmt.setInt(3, diasBeneficio.getEstado());
+	        pstmt.setInt(4, diasBeneficio.getTipoServicio().getCodigo());
 
-			// parameter.addValue("grupoGabu", diasBeneficio.getGrupoGabu().getCodigo());
-			parameter.addValue("grupoGabu", diasBeneficio.getCodigoGrupoGabu());
-			parameter.addValue("dia", diasBeneficio.getDia().getCodigo());
-			parameter.addValue("estado", diasBeneficio.getEstado());
-			parameter.addValue("tipoServicio", diasBeneficio.getTipoServicio().getCodigo());
+	        pstmt.executeUpdate();
+	        connection.commit();
 
-			jdbc.update(sql, parameter, keyHolder);
-			return keyHolder.getKey().intValue();
+	        try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+	            if (generatedKeys.next()) {
+	                return generatedKeys.getInt(1);
+	            } else {
+	                return 0;
+	            }
+	        }
 
-		} catch (Exception e) {
-
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0;
+	    }
 	}
 
 	@Override
 	public int crearDiasBeneficio(String userdb, List<DiaBeneficio> diasBeneficio) {
-	    DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-	    NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
-
 	    String sql = "INSERT INTO sibusco.restaurante_dias_beneficio "
 	            + "(rgg_codigo, dia_codigo, rdb_estado, rts_codigo) "
-	            + "VALUES(:grupoGabu, :dia, :estado, :tipoServicio)";
+	            + "VALUES (?, ?, ?, ?)";
 
-	    try {
-	        SqlParameterSource[] batchParams = diasBeneficio.stream()
-	                .map(diaBeneficio -> new MapSqlParameterSource()
-	                        .addValue("grupoGabu", diaBeneficio.getCodigoGrupoGabu())
-	                        .addValue("dia", diaBeneficio.getDia().getCodigo())
-	                        .addValue("estado", diaBeneficio.getEstado())
-	                        .addValue("tipoServicio", diaBeneficio.getTipoServicio().getCodigo()))
-	                .toArray(SqlParameterSource[]::new);
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-	        int[] updateCounts = jdbc.batchUpdate(sql, batchParams);
-	        int totalInserted = Arrays.stream(updateCounts).sum();
+	        connection.setAutoCommit(false);
+
+	        int totalInserted = 0;
+
+	        for (DiaBeneficio diaBeneficio : diasBeneficio) {
+	            pstmt.setInt(1, diaBeneficio.getCodigoGrupoGabu());
+	            pstmt.setInt(2, diaBeneficio.getDia().getCodigo());
+	            pstmt.setInt(3, diaBeneficio.getEstado());
+	            pstmt.setInt(4, diaBeneficio.getTipoServicio().getCodigo());
+	            pstmt.addBatch();
+	        }
+
+	        int[] updateCounts = pstmt.executeBatch(); 
+	        totalInserted = Arrays.stream(updateCounts).sum(); 
+
+	        connection.commit(); 
 
 	        return totalInserted;
-	    } catch (Exception e) {
+
+	    } catch (SQLException e) {
 	        e.printStackTrace();
-	        return 0;
-	    } finally {
-	        try {
-	            cerrarConexion(dataSource.getConnection());
-	        } catch (SQLException e) {
-	            e.printStackTrace();
-	        }
+	        return 0; 
 	    }
 	}
-
 
 }

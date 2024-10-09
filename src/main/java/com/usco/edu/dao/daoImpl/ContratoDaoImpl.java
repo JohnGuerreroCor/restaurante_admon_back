@@ -1,7 +1,10 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -9,12 +12,7 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 import com.usco.edu.dao.IContratoDao;
 import com.usco.edu.entities.Contrato;
@@ -26,11 +24,11 @@ public class ContratoDaoImpl implements IContratoDao {
 
 	@Autowired
 	private AuditoriaJdbcTemplate jdbcComponent;
-
+	
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
-
+	
 	@Override
 	public List<Contrato> obtenerContratos(String userdb) {
 		String sql = "SELECT *  FROM sibusco.restaurante_contrato rec "
@@ -62,118 +60,108 @@ public class ContratoDaoImpl implements IContratoDao {
 		return jdbcTemplate.query(sql, new ContratoSetExtractor());
 	}
 **/
+
 	@Override
 	public int crearContrato(String userdb, Contrato contrato) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "IF NOT EXISTS ("
+	            + "    SELECT 1 "
+	            + "    FROM sibusco.restaurante_contrato existing "
+	            + "    WHERE ? >= existing.rco_fecha_inicial AND ? <= existing.rco_fecha_final AND ? = existing.rco_uaa_codigo "
+	            + "    AND existing.rco_estado = 1 "
+	            + ") "
+	            + "BEGIN "
+	            + "    INSERT INTO sibusco.restaurante_contrato "
+	            + "        (rtc_codigo, rco_fecha_inicial, rco_fecha_final, rco_valor_contrato, rco_subsidio_desayuno, rco_subsidio_almuerzo, rco_subsidio_cena, rco_pagado_estudiante_desayuno, rco_pagado_estudiante_almuerzo, rco_pagado_estudiante_cena, rco_cantidad_desayunos, rco_cantidad_almuerzos, rco_cantidad_cenas, rco_uaa_codigo, rco_estado) "
+	            + "    VALUES "
+	            + "        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); "
+	            + "END";
 
-		KeyHolder keyHolder = new GeneratedKeyHolder();
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-		String sql = "IF NOT EXISTS ("
-				+ "    SELECT 1"
-				+ "    FROM sibusco.restaurante_contrato existing "
-				+ "    WHERE :fechaFinal >= existing.rco_fecha_inicial AND :fechaInicial <= existing.rco_fecha_final AND :uaa = existing.rco_uaa_codigo "
-				+ "    AND existing.rco_estado = 1 "
-				+ ") "
-				+ "BEGIN "
-				+ "    INSERT INTO sibusco.restaurante_contrato "
-				+ "        (rtc_codigo, rco_fecha_inicial, rco_fecha_final, rco_valor_contrato, rco_subsidio_desayuno, rco_subsidio_almuerzo, rco_subsidio_cena, rco_pagado_estudiante_desayuno, rco_pagado_estudiante_almuerzo, rco_pagado_estudiante_cena, rco_cantidad_desayunos, rco_cantidad_almuerzos, rco_cantidad_cenas, rco_uaa_codigo, rco_estado) "
-				+ "    VALUES "
-				+ "        (:tipoContrato, :fechaInicial, :fechaFinal, :valorContrato, :subsidioDesayuno, :subsidioAlmuerzo, :subsidioCena, :pagoEstudianteDesayuno, :pagoEstudianteAlmuerzo, :pagoEstudianteCena, :cantidadDesayunos, :cantidadAlmuerzos, :cantidadCenas, :uaa, :estado) "
-				+ "END;";
-		
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
 
-			parameter.addValue("tipoContrato", contrato.getTipoContrato().getCodigo());
-			parameter.addValue("fechaInicial", contrato.getFechaInicial());
-			parameter.addValue("fechaFinal", contrato.getFechaFinal());
-			parameter.addValue("valorContrato", contrato.getValorContrato());
-			parameter.addValue("subsidioDesayuno", contrato.getSubsidioDesayuno());
-			parameter.addValue("subsidioAlmuerzo", contrato.getSubsidioAlmuerzo());
-			parameter.addValue("subsidioCena", contrato.getSubsidioCena());
-			parameter.addValue("pagoEstudianteDesayuno", contrato.getPagoEstudianteDesayuno());
-			parameter.addValue("pagoEstudianteAlmuerzo", contrato.getPagoEstudianteAlmuerzo());
-			parameter.addValue("pagoEstudianteCena", contrato.getPagoEstudianteCena());
-			parameter.addValue("cantidadDesayunos", contrato.getCantidadDesayunos());
-			parameter.addValue("cantidadAlmuerzos", contrato.getCantidadAlmuerzos());
-			parameter.addValue("cantidadCenas", contrato.getCantidadCenas());
-			parameter.addValue("uaa", contrato.getDependencia().getCodigo());
-			parameter.addValue("estado", contrato.getEstado());
+	        pstmt.setDate(1, contrato.getFechaFinal());
+	        pstmt.setDate(2, contrato.getFechaInicial());
+	        pstmt.setLong(3, contrato.getDependencia().getCodigo());
+	        pstmt.setInt(4, contrato.getTipoContrato().getCodigo());
+	        pstmt.setDate(5, contrato.getFechaInicial());
+	        pstmt.setDate(6, contrato.getFechaFinal());
+	        pstmt.setInt(7, contrato.getValorContrato());
+	        pstmt.setInt(8, contrato.getSubsidioDesayuno());
+	        pstmt.setInt(9, contrato.getSubsidioAlmuerzo());
+	        pstmt.setInt(10, contrato.getSubsidioCena());
+	        pstmt.setInt(11, contrato.getPagoEstudianteDesayuno());
+	        pstmt.setInt(12, contrato.getPagoEstudianteAlmuerzo());
+	        pstmt.setInt(13, contrato.getPagoEstudianteCena());
+	        pstmt.setInt(14, contrato.getCantidadDesayunos());
+	        pstmt.setInt(15, contrato.getCantidadAlmuerzos());
+	        pstmt.setInt(16, contrato.getCantidadCenas());
+	        pstmt.setLong(17, contrato.getDependencia().getCodigo());
+	        pstmt.setInt(18, contrato.getEstado());
 
-			jdbc.update(sql, parameter, keyHolder);
-			return keyHolder.getKey().intValue();
+	        pstmt.executeUpdate();
 
-		} catch (Exception e) {
+	        try (ResultSet rs = pstmt.getGeneratedKeys()) {
+	            if (rs.next()) {
+	                int generatedKey = rs.getInt(1); 
+	                connection.commit(); 
+	                return generatedKey; 
+	            }
+	        }
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	        connection.commit(); 
+	        return 0; 
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0; 
+	    }
 	}
+
 	
 	@Override
 	public int actualizarContrato(String userdb, Contrato contrato) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "UPDATE sibusco.restaurante_contrato "
+	            + "SET rtc_codigo = ?, rco_fecha_inicial = ?, rco_fecha_final = ?, rco_valor_contrato = ?, "
+	            + "rco_subsidio_desayuno = ?, rco_subsidio_almuerzo = ?, rco_subsidio_cena = ?, "
+	            + "rco_pagado_estudiante_desayuno = ?, rco_pagado_estudiante_almuerzo = ?, rco_pagado_estudiante_cena = ?, "
+	            + "rco_cantidad_desayunos = ?, rco_cantidad_almuerzos = ?, rco_cantidad_cenas = ?, rco_uaa_codigo = ?, "
+	            + "rco_estado = ? "
+	            + "WHERE rco_codigo = ?";
 
-		String sql = "UPDATE sibusco.restaurante_contrato "
-				+ "SET rtc_codigo=:tipoContrato, rco_fecha_inicial=:fechaInicial, rco_fecha_final=:fechaFinal, rco_valor_contrato=:valorContrato, rco_subsidio_desayuno=:subsidioDesayuno, rco_subsidio_almuerzo=:subsidioAlmuerzo, rco_subsidio_cena=:subsidioCena, rco_pagado_estudiante_desayuno=:pagoEstudianteDesayuno, rco_pagado_estudiante_almuerzo=:pagoEstudianteAlmuerzo, rco_pagado_estudiante_cena=:pagoEstudianteCena, rco_cantidad_desayunos=:cantidadDesayunos, rco_cantidad_almuerzos=:cantidadAlmuerzos, rco_cantidad_cenas=:cantidadCenas, rco_uaa_codigo=:uaa, rco_estado=:estado "
-				+ "WHERE rco_codigo=:codigo";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-		try {
+	        connection.setAutoCommit(false); 
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setInt(1, contrato.getTipoContrato().getCodigo());
+	        pstmt.setDate(2, contrato.getFechaInicial());
+	        pstmt.setDate(3, contrato.getFechaFinal());
+	        pstmt.setInt(4, contrato.getValorContrato());
+	        pstmt.setInt(5, contrato.getSubsidioDesayuno());
+	        pstmt.setInt(6, contrato.getSubsidioAlmuerzo());
+	        pstmt.setInt(7, contrato.getSubsidioCena());
+	        pstmt.setInt(8, contrato.getPagoEstudianteDesayuno());
+	        pstmt.setInt(9, contrato.getPagoEstudianteAlmuerzo());
+	        pstmt.setInt(10, contrato.getPagoEstudianteCena());
+	        pstmt.setInt(11, contrato.getCantidadDesayunos());
+	        pstmt.setInt(12, contrato.getCantidadAlmuerzos());
+	        pstmt.setInt(13, contrato.getCantidadCenas());
+	        pstmt.setLong(14, contrato.getDependencia().getCodigo());
+	        pstmt.setInt(15, contrato.getEstado());
+	        pstmt.setInt(16, contrato.getCodigo());
 
-			parameter.addValue("codigo", contrato.getCodigo());
-			parameter.addValue("tipoContrato", contrato.getTipoContrato().getCodigo());
-			parameter.addValue("fechaInicial", contrato.getFechaInicial());
-			parameter.addValue("fechaFinal", contrato.getFechaFinal());
-			parameter.addValue("valorContrato", contrato.getValorContrato());
-			parameter.addValue("subsidioDesayuno", contrato.getSubsidioDesayuno());
-			parameter.addValue("subsidioAlmuerzo", contrato.getSubsidioAlmuerzo());
-			parameter.addValue("subsidioCena", contrato.getSubsidioCena());
-			parameter.addValue("pagoEstudianteDesayuno", contrato.getPagoEstudianteDesayuno());
-			parameter.addValue("pagoEstudianteAlmuerzo", contrato.getPagoEstudianteAlmuerzo());
-			parameter.addValue("pagoEstudianteCena", contrato.getPagoEstudianteCena());
-			parameter.addValue("cantidadDesayunos", contrato.getCantidadDesayunos());
-			parameter.addValue("cantidadAlmuerzos", contrato.getCantidadAlmuerzos());
-			parameter.addValue("cantidadCenas", contrato.getCantidadCenas());
-			parameter.addValue("uaa", contrato.getDependencia().getCodigo());
-			parameter.addValue("estado", contrato.getEstado());
 
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
+	        int rowsAffected = pstmt.executeUpdate();
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	        connection.commit(); 
+	        return rowsAffected; 
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0; 
+	    }
 	}
-
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
 }

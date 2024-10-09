@@ -1,17 +1,14 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-
-import javax.sql.DataSource;
+import java.sql.Statement;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import com.usco.edu.dao.IPiboteAdicionDao;
@@ -28,85 +25,71 @@ public class PiboteAdicionDaoImpl implements IPiboteAdicionDao {
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
 
-	@Override
-	public int crearPibote(String userdb, PiboteAdicion piboteAdicion) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+    @Override
+    public int crearPibote(String userdb, PiboteAdicion piboteAdicion) {
+        String sql = "INSERT INTO sibusco.restaurante_pibote_adicion "
+                + "(rco_codigo_general, rco_codigo_adicion, rpa_estado) "
+                + "VALUES (?, ?, ?)";
 
-		KeyHolder keyHolder = new GeneratedKeyHolder();
+        try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-		String sql = "INSERT INTO sibusco.restaurante_pibote_adicion "
-				+ "(rco_codigo_general, rco_codigo_adicion, rpa_estado) " 
-				+ "VALUES(:contratoGeneral, :contratoAdicion, :estado);";
+            connection.setAutoCommit(false);
 
-		try {
+            pstmt.setInt(1, piboteAdicion.getCodigoGeneral());
+            pstmt.setInt(2, piboteAdicion.getCodigoAdicion());
+            pstmt.setInt(3, piboteAdicion.getEstado());
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+            int affectedRows = pstmt.executeUpdate();
 
-			parameter.addValue("contratoGeneral", piboteAdicion.getCodigoGeneral());
-			parameter.addValue("contratoAdicion", piboteAdicion.getCodigoAdicion());
-			parameter.addValue("estado", piboteAdicion.getEstado());
+            if (affectedRows == 0) {
+                connection.rollback(); 
+                return 0; 
+            }
 
-			jdbc.update(sql, parameter, keyHolder);
-			return keyHolder.getKey().intValue();
+            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int generatedId = generatedKeys.getInt(1); 
+                    connection.commit(); 
+                    return generatedId; 
+                } else {
+                    connection.rollback();
+                    return 0;
+                }
+            }
 
-		} catch (Exception e) {
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
 
-	@Override
-	public int actualizarPibote(String userdb, PiboteAdicion piboteAdicion) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+    @Override
+    public int actualizarPibote(String userdb, PiboteAdicion piboteAdicion) {
+        String sql = "UPDATE sibusco.restaurante_pibote_adicion rpa "
+                + "SET rpa.rpa_estado = ? "
+                + "WHERE rpa.rco_codigo_general = ? "
+                + "AND rpa.rco_codigo_adicion = ?;";
 
-		String sql = "UPDATE sibusco.restaurante_pibote_adicion rpa "
-				+ "SET rpa.rpa_estado=:estado "
-				+ "WHERE rpa.rco_codigo_general = :contratoGeneral "
-				+ "AND rpa.rco_codigo_adicion = :contratoAdicion;";
+        try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-		try {
+            connection.setAutoCommit(false); 
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+            pstmt.setInt(1, piboteAdicion.getEstado());
+            pstmt.setInt(2, piboteAdicion.getCodigoGeneral());
+            pstmt.setInt(3, piboteAdicion.getCodigoAdicion());
 
-			parameter.addValue("contratoGeneral", piboteAdicion.getCodigoGeneral());
-			parameter.addValue("contratoAdicion", piboteAdicion.getCodigoAdicion());
-			parameter.addValue("estado", piboteAdicion.getEstado());
-			
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
+            int affectedRows = pstmt.executeUpdate();
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
+            connection.commit(); 
+            return affectedRows; 
 
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
 
 }
