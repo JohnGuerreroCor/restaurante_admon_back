@@ -1,16 +1,13 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
-
-import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.usco.edu.dao.IDiaHorarioServicioDao;
@@ -23,10 +20,11 @@ public class DiaHorarioServicioDaoImpl implements IDiaHorarioServicioDao {
 
 	@Autowired
 	private AuditoriaJdbcTemplate jdbcComponent;
-
+	
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
+	
 
 	@Override
 	public List<DiaHorarioServicio> obtenerDiasHorarioServicio(String userdb) {
@@ -41,47 +39,25 @@ public class DiaHorarioServicioDaoImpl implements IDiaHorarioServicioDao {
 
 	@Override
 	public int actualizarDiaHorarioServicio(String userdb, DiaHorarioServicio diaHorarioServicio) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "UPDATE sibusco.restaurante_dias_horario_servicio "
+	            + "SET rds_estado=? "
+	            + "WHERE rds_codigo=?";
 
-		String sql = "UPDATE sibusco.restaurante_dias_horario_servicio "
-				+ "SET rds_estado=:estado "
-				+ "WHERE rds_codigo=:codigo";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setInt(1, diaHorarioServicio.getEstado());
+	        pstmt.setInt(2, diaHorarioServicio.getCodigo());
+	        int rowsAffected = pstmt.executeUpdate();
+	        connection.commit();
+	        return rowsAffected;
 
-			parameter.addValue("codigo", diaHorarioServicio.getCodigo());
-			parameter.addValue("horarioServicio", diaHorarioServicio.getHorarioServicio().getCodigo());
-			parameter.addValue("dia", diaHorarioServicio.getDia().getCodigo());
-			parameter.addValue("estado", diaHorarioServicio.getEstado());
-
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
-
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0;
+	    }
 	}
 
 }

@@ -10,13 +10,9 @@ import org.springframework.stereotype.Repository;
 import com.usco.edu.dao.IGrupoGabuDiasBeneficioDao;
 import com.usco.edu.entities.GrupoGabuDiasBeneficio;
 import com.usco.edu.resultSetExtractor.GrupoGabuDiasBeneficioSetExtractor;
-import com.usco.edu.util.AuditoriaJdbcTemplate;
 
 @Repository
 public class GrupoGabuDiasBeneficioDaoImpl implements IGrupoGabuDiasBeneficioDao {
-
-	@Autowired
-	private AuditoriaJdbcTemplate jdbcComponent;
 
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")

@@ -1,26 +1,20 @@
 package com.usco.edu.dao.daoImpl;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
-
-import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 import com.usco.edu.dao.IGrupoGabuDao;
 import com.usco.edu.entities.GrupoGabu;
-import com.usco.edu.entities.GrupoGabuDiasBeneficio;
 import com.usco.edu.resultSetExtractor.GrupoGabuSetExtractor;
-import com.usco.edu.resultSetExtractor.GrupoGabuDiasBeneficioSetExtractor;
 import com.usco.edu.util.AuditoriaJdbcTemplate;
 
 @Repository
@@ -28,11 +22,11 @@ public class GrupoGabuDaoImpl implements IGrupoGabuDao {
 
 	@Autowired
 	private AuditoriaJdbcTemplate jdbcComponent;
-
+	
 	@Autowired
 	@Qualifier("JDBCTemplateConsulta")
 	public JdbcTemplate jdbcTemplate;
-
+	
 	@Override
 	public List<GrupoGabu> obtenerGrupoGabus(String userdb) {
 		 
@@ -68,85 +62,87 @@ public class GrupoGabuDaoImpl implements IGrupoGabuDao {
 
 	@Override
 	public int crearGrupoGabu(String userdb, GrupoGabu grupoGabu) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "DECLARE @exists INT; " +
+	                 "SELECT @exists = (SELECT COUNT(1) FROM sibusco.restaurante_grupo_gabu " +
+	                 "                  WHERE per_codigo = ? AND rgg_vigencia <= ?); " +
+	                 "IF (@exists = 0) " +
+	                 "BEGIN " +
+	                 "    INSERT INTO sibusco.restaurante_grupo_gabu (rtg_codigo, per_codigo, rgg_vigencia, rgg_estado, est_codigo) " +
+	                 "    VALUES (?, ?, ?, ?, ?); " +
+	                 "    SELECT SCOPE_IDENTITY(); " +
+	                 "END";
 
-		KeyHolder keyHolder = new GeneratedKeyHolder();
-		String sql = "INSERT INTO sibusco.restaurante_grupo_gabu "
-				+ "(rtg_codigo, per_codigo, rgg_vigencia, rgg_estado, est_codigo) "
-				+ "VALUES(:tipoGabu, :persona, :vigencia, :estado, :codigoEstudiante );";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
 
-			parameter.addValue("tipoGabu", grupoGabu.getTipoGabu().getCodigo());
-			parameter.addValue("codigoEstudiante", grupoGabu.getCodigoEstudiante());
-			parameter.addValue("persona", grupoGabu.getPersona().getCodigo());
-			parameter.addValue("vigencia", grupoGabu.getVigencia());
-			parameter.addValue("estado", grupoGabu.getEstado());
+	        pstmt.setLong(1, grupoGabu.getPersona().getCodigo());
+	        pstmt.setDate(2, grupoGabu.getVigencia());
+	        pstmt.setInt(3, grupoGabu.getTipoGabu().getCodigo());
+	        pstmt.setLong(4, grupoGabu.getPersona().getCodigo());
+	        pstmt.setDate(5, grupoGabu.getVigencia());
+	        pstmt.setInt(6, grupoGabu.getEstado());
+	        pstmt.setLong(7, grupoGabu.getCodigoEstudiante());
 
-			jdbc.update(sql, parameter, keyHolder);
-			return keyHolder.getKey().intValue();
 
-		} catch (Exception e) {
+	        pstmt.executeUpdate();
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+
+	        try (ResultSet rs = pstmt.getGeneratedKeys()) {
+	            if (rs.next()) {
+	                int generatedKey = rs.getInt(1); 
+	                connection.commit(); 
+	                return generatedKey; 
+	            }
+	        }
+
+	        connection.commit();
+	        return 0; 
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0; 
+	    }
 	}
+
 
 	@Override
 	public int actualizarGrupoGabu(String userdb, GrupoGabu grupoGabu) {
-		DataSource dataSource = jdbcComponent.construirDataSourceDeUsuario(userdb);
-		NamedParameterJdbcTemplate jdbc = jdbcComponent.construirTemplatenew(dataSource);
+	    String sql = "UPDATE sibusco.restaurante_grupo_gabu " +
+	                 "SET rtg_codigo = ?, per_codigo = ?, rgg_vigencia = ?, rgg_estado = ? " +
+	                 "WHERE rgg_codigo = ? " +
+	                 "AND NOT EXISTS ( " +
+	                 "    SELECT 1 FROM sibusco.restaurante_grupo_gabu rgg " +
+	                 "    WHERE rgg.per_codigo = ? " +
+	                 "    AND rgg.rgg_vigencia <= ? " +
+	                 "    AND rgg.rgg_codigo <> ? " +
+	                 ")";
 
-		String sql = "UPDATE sibusco.restaurante_grupo_gabu "
-				+ "SET rtg_codigo=:tipoGabu, per_codigo=:persona, rgg_vigencia=:vigencia, rgg_estado=:estado "
-				+ "WHERE rgg_codigo=:codigo";
+	    try (Connection connection = jdbcComponent.construirDataSourceDeUsuario(userdb).getConnection();
+	         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 
-		try {
+	        connection.setAutoCommit(false);
 
-			MapSqlParameterSource parameter = new MapSqlParameterSource();
+	        pstmt.setInt(1, grupoGabu.getTipoGabu().getCodigo());
+	        pstmt.setLong(2, grupoGabu.getPersona().getCodigo());
+	        pstmt.setDate(3, grupoGabu.getVigencia());
+	        pstmt.setInt(4, grupoGabu.getEstado());
+	        pstmt.setInt(5, grupoGabu.getCodigo());
+	        pstmt.setLong(6, grupoGabu.getPersona().getCodigo());
+	        pstmt.setDate(7, grupoGabu.getVigencia());
+	        pstmt.setInt(8, grupoGabu.getCodigo());
 
-			parameter.addValue("codigo", grupoGabu.getCodigo());
-			parameter.addValue("tipoGabu", grupoGabu.getTipoGabu().getCodigo());
-			parameter.addValue("persona", grupoGabu.getPersona().getCodigo());
-			parameter.addValue("vigencia", grupoGabu.getVigencia());
-			parameter.addValue("estado", grupoGabu.getEstado());
+	        int updatedRows = pstmt.executeUpdate();
 
-			return jdbc.update(sql, parameter);
-		} catch (Exception e) {
+	        connection.commit(); 
+	        return updatedRows; 
 
-			e.printStackTrace();
-			return 0;
-		} finally {
-			try {
-				cerrarConexion(dataSource.getConnection());
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void cerrarConexion(Connection con) {
-		if (con == null)
-			return;
-
-		try {
-			con.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return 0; 
+	    }
 	}
 
 }
