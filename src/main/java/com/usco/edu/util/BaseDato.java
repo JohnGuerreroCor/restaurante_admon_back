@@ -25,9 +25,9 @@ public class BaseDato {
 
 			DataSource dataSource = null;
 
-		dataSource = (DataSource) ctx.lookup("jboss/datasources/ConsultaDS");
+		//dataSource = (DataSource) ctx.lookup("jboss/datasources/ConsultaDS");
 
-   		//dataSource = (DataSource) ctx.lookup("java:jboss/datasources/restaurante_admon_consultaDS");
+   		dataSource = (DataSource) ctx.lookup("java:jboss/datasources/restaurante_admon_consultaDS");
 
 			conexion = dataSource.getConnection();
 		} catch (Exception e) {
